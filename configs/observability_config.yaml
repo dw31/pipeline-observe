@@ -1,0 +1,338 @@
+# ============================================================================
+# Databricks Pipeline Observability - Global Configuration
+# ============================================================================
+# This file contains centralized configuration for the observability platform.
+# All notebooks and scripts should load parameters from this file to ensure
+# consistency across the platform.
+#
+# Usage in notebooks:
+#   %run ./configs/config_loader
+#   config = load_config()
+#   catalog = config['catalog']
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Unity Catalog Configuration
+# ----------------------------------------------------------------------------
+catalog: main
+schema: observability
+
+# Alternative environment-specific catalogs (uncomment as needed)
+# dev:
+#   catalog: dev
+#   schema: observability
+# prod:
+#   catalog: prod
+#   schema: observability
+
+# ----------------------------------------------------------------------------
+# Observability Table Names
+# ----------------------------------------------------------------------------
+tables:
+  # DLT Monitoring Tables
+  event_logs: dlt_event_logs
+  quality_metrics: dlt_quality_metrics
+  pipeline_health: dlt_pipeline_health
+
+  # Data Quality Management
+  quality_rules: data_quality_rules
+  quality_history: data_quality_history
+
+  # Cost and Performance Monitoring
+  cost_metrics: cost_metrics
+  job_metrics: job_metrics
+  query_metrics: query_metrics
+  cluster_metrics: cluster_metrics
+
+  # Lineage Tracking
+  lineage_graph: lineage_graph
+  column_lineage: column_lineage
+
+  # Alerting
+  alert_history: alert_history
+  alert_config: alert_config
+
+# ----------------------------------------------------------------------------
+# System Tables (Databricks)
+# ----------------------------------------------------------------------------
+system_tables:
+  billing: system.billing.usage
+  jobs: system.lakeflow.jobs
+  job_runs: system.lakeflow.job_run_timeline
+  queries: system.query.history
+  clusters: system.compute.clusters
+  table_lineage: system.access.table_lineage
+  column_lineage: system.access.column_lineage
+
+# ----------------------------------------------------------------------------
+# Monitoring Configuration
+# ----------------------------------------------------------------------------
+monitoring:
+  # Default lookback period for monitoring queries
+  default_lookback_days: 7
+
+  # DLT event log collection
+  event_log_collection:
+    enabled: true
+    batch_size: 10000
+    max_retries: 3
+
+  # Quality metrics tracking
+  quality_metrics:
+    enabled: true
+    track_history: true
+    history_retention_days: 90
+
+  # Performance monitoring
+  performance_monitoring:
+    enabled: true
+    collect_cluster_metrics: true
+    collect_query_metrics: true
+
+# ----------------------------------------------------------------------------
+# Data Quality Configuration
+# ----------------------------------------------------------------------------
+data_quality:
+  # Default action for expectations (warn, drop, fail)
+  default_action: warn
+
+  # Default severity level (low, medium, high, critical)
+  default_severity: medium
+
+  # Enable quarantine tables for failed records
+  enable_quarantine: true
+  quarantine_suffix: _quarantine
+
+  # Quality score calculation
+  quality_score:
+    min_pass_rate: 0.95  # 95% pass rate required for "healthy" status
+    warning_threshold: 0.90  # Below 90% triggers warning
+    critical_threshold: 0.80  # Below 80% triggers critical alert
+
+  # Rule templates configuration
+  templates:
+    enabled: true
+    auto_tag: true  # Automatically tag rules created from templates
+
+# ----------------------------------------------------------------------------
+# Lakehouse Monitoring Configuration
+# ----------------------------------------------------------------------------
+lakehouse_monitoring:
+  enabled: true
+
+  # Default monitor configuration
+  defaults:
+    monitor_type: TimeSeries
+    granularity: "1 day"
+    output_schema: observability
+
+  # Drift detection
+  drift_detection:
+    enabled: true
+    threshold: 0.1  # 10% drift threshold
+
+  # Scheduled refresh
+  refresh_schedule:
+    enabled: true
+    cron: "0 */6 * * *"  # Every 6 hours
+
+# ----------------------------------------------------------------------------
+# Alerting Configuration
+# ----------------------------------------------------------------------------
+alerting:
+  # Enable/disable alerting globally
+  enabled: true
+
+  # Alert channels
+  channels:
+    email:
+      enabled: true
+      default_recipients: []  # Add default email addresses
+
+    slack:
+      enabled: false
+      webhook_url: ""  # Set your Slack webhook URL
+      channel: "#data-alerts"
+
+    teams:
+      enabled: false
+      webhook_url: ""  # Set your Teams webhook URL
+
+    pagerduty:
+      enabled: false
+      integration_key: ""
+
+  # Alert thresholds
+  thresholds:
+    cost:
+      daily_increase_percent: 20
+      absolute_threshold_usd: 1000
+      anomaly_detection: true
+
+    job_failure:
+      failure_rate_percent: 10
+      consecutive_failures: 3
+      alert_on_first_failure: false
+
+    data_quality:
+      quality_score_threshold: 0.95
+      failed_records_threshold: 1000
+      pass_rate_threshold: 0.90
+
+    pipeline_freshness:
+      warning_hours_stale: 24
+      critical_hours_stale: 48
+
+    performance:
+      duration_increase_percent: 50
+      max_duration_minutes: 120
+
+  # Alert frequency limits (prevent alert fatigue)
+  rate_limiting:
+    enabled: true
+    max_alerts_per_hour: 10
+    cooldown_minutes: 60
+
+# ----------------------------------------------------------------------------
+# Storage Configuration
+# ----------------------------------------------------------------------------
+storage:
+  # Default storage location for DLT pipelines
+  dlt_storage_root: /mnt/dlt
+
+  # Checkpoint locations
+  checkpoint_root: /mnt/checkpoints/observability
+
+  # Log aggregation
+  log_storage: /mnt/logs/observability
+
+  # Table properties
+  table_properties:
+    enable_change_data_feed: true
+    auto_optimize_write: true
+    auto_compact: true
+    optimize_write: true
+    liquid_clustering: false  # Enable for large tables (requires DBR 13.3+)
+
+# ----------------------------------------------------------------------------
+# Performance and Optimization
+# ----------------------------------------------------------------------------
+optimization:
+  # Auto-optimize settings
+  auto_optimize:
+    enabled: true
+    z_order_columns:
+      event_logs: ["pipeline_id", "timestamp"]
+      quality_metrics: ["dataset_name", "timestamp"]
+      pipeline_health: ["pipeline_id", "start_time"]
+
+  # Partition configuration
+  partitioning:
+    event_logs: ["DATE(timestamp)"]
+    quality_metrics: ["DATE(timestamp)"]
+    pipeline_health: ["DATE(start_time)"]
+    cost_metrics: ["usage_date"]
+
+  # Vacuum settings (cleanup old files)
+  vacuum:
+    enabled: true
+    retention_hours: 168  # 7 days
+
+  # Optimize settings
+  optimize:
+    enabled: true
+    schedule: "0 2 * * *"  # Daily at 2 AM
+
+# ----------------------------------------------------------------------------
+# Security and Compliance
+# ----------------------------------------------------------------------------
+security:
+  # Enable row-level security
+  row_level_security:
+    enabled: false
+
+  # Enable column masking for PII
+  column_masking:
+    enabled: false
+    pii_columns: ["email", "phone_number", "ssn"]
+
+  # Audit logging
+  audit_logging:
+    enabled: true
+    log_table: audit_logs
+    retention_days: 365
+
+# ----------------------------------------------------------------------------
+# Development and Testing
+# ----------------------------------------------------------------------------
+development:
+  # Enable debug mode (more verbose logging)
+  debug_mode: false
+
+  # Sample data for testing
+  sample_data:
+    enabled: false
+    row_count: 1000
+
+  # Dry run mode (don't write to tables)
+  dry_run: false
+
+# ----------------------------------------------------------------------------
+# Integration Settings
+# ----------------------------------------------------------------------------
+integrations:
+  # Unity Catalog
+  unity_catalog:
+    enabled: true
+    lineage_tracking: true
+    auto_tag_tables: true
+
+  # Databricks Workflows
+  workflows:
+    enabled: true
+    default_cluster_policy: ""
+
+  # External systems
+  external:
+    # REST API endpoints for custom integrations
+    webhook_endpoints: []
+
+    # dbt integration
+    dbt:
+      enabled: false
+      manifest_path: ""
+
+    # Great Expectations integration
+    great_expectations:
+      enabled: false
+      context_root: ""
+
+# ----------------------------------------------------------------------------
+# Feature Flags
+# ----------------------------------------------------------------------------
+features:
+  enable_ml_monitoring: false  # Experimental: ML model monitoring
+  enable_streaming_metrics: true  # Real-time streaming pipeline metrics
+  enable_cost_optimization: true  # Automated cost optimization suggestions
+  enable_lineage_impact_analysis: true  # Impact analysis for schema changes
+  enable_auto_remediation: false  # Experimental: Auto-fix common issues
+
+# ----------------------------------------------------------------------------
+# Notification Templates
+# ----------------------------------------------------------------------------
+notification_templates:
+  pipeline_failure:
+    subject: "[ALERT] Pipeline Failure: {pipeline_name}"
+    priority: high
+
+  quality_degradation:
+    subject: "[WARNING] Data Quality Alert: {dataset_name}"
+    priority: medium
+
+  cost_anomaly:
+    subject: "[ALERT] Cost Anomaly Detected"
+    priority: high
+
+  sla_violation:
+    subject: "[CRITICAL] SLA Violation: {pipeline_name}"
+    priority: critical
