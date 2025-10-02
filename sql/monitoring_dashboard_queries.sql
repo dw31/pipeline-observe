@@ -9,6 +9,10 @@
 -- - System tables enabled
 -- - Observability schema and tables created
 -- - Appropriate permissions to query system and observability tables
+-- 
+-- CONFIGURE:
+-- - Change catalog and schema names in SQL below
+-- 
 -- ============================================================================
 
 -- ============================================================================
