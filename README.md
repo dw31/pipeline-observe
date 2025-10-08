@@ -239,7 +239,7 @@ pipeline-observe/
 │       └── quality_rules_manager.py    # Quality rules management
 │
 ├── scripts/
-│   └── setup_lakehouse_monitoring.py   # Lakehouse Monitoring automation
+│   └── setup_lakehouse_monitoring.ipynb   # Lakehouse Monitoring automation
 │
 ├── sql/
 │   └── monitoring_dashboard_queries.sql  # DBSQL dashboard queries
